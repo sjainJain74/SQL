@@ -1,0 +1,265 @@
+select * from com;
+
+select avg(ID) from com;
+
+CREATE TABLE Employee (name varchar(10), salary int);
+ inserting sample data into Employee table 
+ 
+ 
+ INSERT INTO Employee VALUES (1, 'Rick1', 'manager',1000,1); 
+ INSERT INTO Employee VALUES (2, 'Rick2', 'manager',2000,2); 
+ INSERT INTO Employee VALUES (3, 'Rick3', 'manager',1000,3); 
+ INSERT INTO Employee VALUES (4, 'Rick4', 'manager',9000,2); 
+ INSERT INTO Employee VALUES (5, 'Rick5', 'manager',1000,3); 
+ INSERT INTO Employee VALUES (6, 'Rick6', 'manager',7000,1); 
+ INSERT INTO Employee VALUES (7, 'Rick7', 'manager',1000,3); 
+ INSERT INTO Employee VALUES (8, 'Rick8', 'manager',5000,1); 
+ INSERT INTO Employee VALUES (9, 'Rick9', 'manager',3000,1); 
+ 
+ update employee set salary =1500 where emp_name ='Rick10'
+
+
+ INSERT INTO Employee VALUES (10, 'Rick10', 'manager',500,3); 
+
+select * from employee;
+
+drop table employee;
+
+create table employee (
+emp_id int not null,
+emp_name varchar2(400),
+designation varchar2(400),
+salary number,
+dept_id number,
+primary key (emp_id)
+);
+
+
+alt
+
+--Sum-MAx-Min-Avg-Count-  Are Aggregrate function function !!!
+-- Number of rows will decrease in output
+
+select dept_id , AVG(salary) from employee 
+group by dept_id having dept_id in (1,2);
+
+-- In Analytics function number of rows will not decrease !  
+-- Performance will be better with analytics functions
+--Example rank(),dense_rank(),row_number(),lag lead first last
+-- analytics function ([arguments]) over (analytics_clause)
+-- avg(salary) over (partition by dept_id)
+
+--Avg salary per department infront of each row
+select dept_id,emp_id,emp_name, salary,avg(salary) over (partition by dept_id) as avgsalary from employee order by dept_id;
+
+-- Second Highest salary per dept
+select emp_name ,dept_id , salary, max(salary) over (partition by dept_id) as maxSalaryForDept from employee;  
+
+-- RANK
+Salary 
+100 100 50 25 
+1    1   3 4
+
+--Dense rank  -- No missing rank 
+100 100 50 25 
+1   1   2  3
+
+--Row_number is a analytic function rownum is phesudo column
+-- Row_Number is physical number 
+
+--Count is also analytic function better than  using count aggregation function
+
+-- lag is previous value lead is next value.
+
+
+-- Numbe of employees in each dept
+
+select dept_id ,count(*) from employee group by dept_id order by dept_id;
+--same as 
+select dept_id ,count(*) from employee group by dept_id order by 1;
+
+
+--Arrange the salary in descending order for each deprtment
+
+select emp_name ,dept_id, salary ,RANK() over (partition by dept_id order by salary desc) as DEPT_RANK from employee ;
+
+
+-- select two top most salary from each dept
+
+select * from (
+select emp_name ,dept_id, salary ,RANK() over (partition by dept_id order by salary desc) as DEPT_RANK from employee )
+where DEPT_RANK <=2;
+
+
+
+
+select * from (
+select emp_name ,dept_id, salary ,RANK() over (partition by dept_id order by salary desc) as DEPT_RANK from employee )
+where DEPT_RANK <=5 order by dept_id;
+
+
+--- If we do not want to skip rank in between we should use dense rank
+select * from (
+select emp_name ,dept_id, salary ,DENSE_RANK() over (partition by dept_id order by salary desc) as DEPT_RANK from employee )
+where DEPT_RANK <=5 order by dept_id;
+
+
+--selecting both rank and dense rank for each department
+
+select emp_name,dept_id ,salary ,
+DENSE_RANK() over (partition by dept_id order by salary desc) as dense_rank,
+RANK() over (partition by dept_id order by salary desc) as rank
+from employee;
+
+-- Rank and dense rank based on salary
+
+select emp_name,dept_id ,salary ,
+DENSE_RANK() over ( order by salary desc) as dense_rank,
+RANK() over ( order by salary desc) as rank
+from employee;
+
+
+---Using RANK, DENSE_RANk and ROW_NUMBER together
+
+select emp_name,dept_id ,salary ,
+DENSE_RANK() over (partition by dept_id order by salary desc) as dense_rank,
+RANK() over (partition by dept_id order by salary desc) as rank,
+ROW_NUMBER() over (partition by dept_id order by salary desc) as ROW_NUMBER
+from employee;
+
+
+--using count as analytics function
+
+-- This will take much less time
+select dept_id ,count(*) over (partition by dept_id) as count_per_dept from employee  ;
+
+-- This will take more time so better use count as analytic function instead of aggregation function
+select dept_id, count(*) from employee group by dept_id;
+
+--Avoid using winow operation and group by in same query it can be in nested query 
+--select dept_id ,count(*) over (partition by dept_id) as count_per_dept from employee group by dept_id;
+
+
+
+-- Difference Between ROW_NUMBER analytics function , Pseudoc column ROW_NUM , Rowid is addrd of row
+-- ROWID 
+-- IS PSEUDO COLUMN , RETURNS THE ADDRESS OF ROW
+-- It is used to delete the dublicate records.
+
+SELECT ROWID , emp_NAME FROM EMPLOYEE;
+
+-- Lets Insert Dublicate
+
+ALTER table employee  DROP PRIMARY KEY;
+-- Insert Dublicate records
+INSERT INTO Employee VALUES (1, 'Rick1', 'manager',1000,1); 
+
+select rowid,emp_id from employee order by emp_id;
+
+select * from employee emp1 where emp1.id in (select emp2.id from employee emp2 );
+
+select  * from employee emp order by emp_id; 
+
+
+--This will give dublicate reccords in table
+select * from employee emp1 where rowid  not in (select max(rowid) from employee emp2 where emp1.emp_id = emp2.emp_id);
+
+-- Ro delete dublicate records
+
+delete  from employee emp1 where rowid  not in (select max(rowid) from employee emp2 where emp1.emp_id = emp2.emp_id);
+
+--
+select rownum, emp_id, emp_name from employee; 
+
+-- rowid is the address which uniquely identify the row on the disk. 
+  -- can use to delete dublicate rownd from oracle
+-- rownum is pseudo column , we can use it to fetch first 10 rows which oracle fetch.
+   -- Similar to limit in mysql
+-- rowid is permanent but rownum is tempory to output of singe query
+
+---http://www.dba-oracle.com/t_rownum_rowid_difference.htm
+
+select * from employee emp1 where rowid  in (select rowid from employee emp2 where emp1.emp_id = emp2.emp_id);
+select rowid,emp_id from employee;
+select max(rowid) from employee;
+select  count(*) from employee group by emp_id having count(*) >1;
+
+
+--------------------------------------------------------------------LEAD /LAG -----------------------------------------------------------------------------------------------------
+
+select * from employee;
+select emp_id,emp_name ,salary from employee order by salary;
+
+--LAG window or analytics functions find salary and previous salary
+-- In below queries we do not have any partioon thus we are applying on whole table
+select emp_id,emp_name ,salary, LAG(salary,1,0)   over (order by salary) as previousSalary  , salary -LAG(salary,1,0) over (order by salary) as salaryDiff   from employee order by salary;
+select emp_id,emp_name ,salary, LEAD(salary,1,0)   over (order by salary) as previousSalary  , salary -LEAD(salary,1,0) over (order by salary) as salaryNext  from employee order by salary;
+
+-- https://www.youtube.com/watch?v=2wowWrlS_6w&t=492s
+----------------------------------------------------------------FIRST_VALUE and LAST_VALUE----------------------------------------------------------------------------------------
+
+select emp_id,emp_name,salary,dept_id,
+first_value(salary) over (order by salary) as smallestValueTillHere ,
+first_value(salary) over (order by salary desc) as smallestValueTillHereDesc 
+from employee;
+
+
+select emp_id,emp_name,salary,dept_id,
+first_value(salary) over (order by salary) as smallestValueTillHere ,
+last_value (salary) over (order by salary) as lastValueTillHere from employee;
+
+
+select emp_id,emp_name,salary,dept_id,
+last_value(salary) over (order by salary ) as largestValueTillHere
+from employee ;
+
+
+
+select emp_id,emp_name,salary,dept_id,
+first_value(salary) over (order by salary) as smallestValueTillHere ,
+first_value(salary) over (order by salary desc) as largestValueTillHere 
+from employee order by salary  ;
+
+--- Smallest Value Till Here For Each Dept
+--- But we have to use partition by before order by 
+
+select emp_id,emp_name,salary,dept_id,
+first_value(salary) over (partition by dept_id order by salary ) as smallestValueTillHereForDept ,
+last_value(salary)  over (partition by dept_id order by salary  ) as largestValueTillHereForDept
+from employee order by salary  ;
+
+
+-- Find 4th Largest salary ---
+
+--rownum is psedudo column
+
+-- This will return the 4 largest salary
+select * from (select * from employee order by salary desc) where rownum <=4;
+
+-- Fetch all records and assign a row_number() anamlyitcs fucntion which assign a row_number value based on order by column in this case its salary.
+select e.*, row_number() over (order by salary desc) as employeeRowNum from employee e  --
+
+-- Fetch the 5rd largest salary using row_number()
+-- 
+select * from (select e.*, row_number() over (order by salary desc) as employeeRowNum from employee e) where employeeRowNum =5;  -- This will return only one row even we have duplicates salary
+
+--- Fetch the 5th largest salary using rank() ---- This will return all slaary which were 5th highest and same -- 
+-- 1,2,2,4  -- Rank 3 might be missing in this case.
+select * from  (select e.*,rank()over (order by salary desc) as employeeSalaryRank from Employee e) where employeeSalaryRank =5; 
+
+
+--- We can use Dense rank if we dwould have all ranks in this case
+--- Fetch the 5th largest salary using rank() ---- This will return all slaary which were 5th highest and same -- 
+-- 1,2,2,3  -- Rank 3 will not be missing in case of dense rank
+
+select * from  (select e.*,dense_rank()over (order by salary desc) as employeeSalaryRank from Employee e) where employeeSalaryRank =5;
+
+
+
+
+
+
+
+
+
+
